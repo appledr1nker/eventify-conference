@@ -222,24 +222,30 @@ const server = new McpServer(
     },
     async () => {
       try {
-        const speakersData = await eventifyFetch<{
-          resource: Speaker[];
-        }>("/speakers");
+        // Get basic speaker list from sessions endpoint
+        const sessionsData = await eventifyFetch<{
+          speakers: { speakerid: number; firstname: string; lastname: string }[];
+        }>("/sessions");
 
-        const speakers = speakersData.resource || [];
+        const basicSpeakers = sessionsData.speakers || [];
+
+        // Fetch full speaker details (with photos) for all speakers
+        const speakerDetails = await Promise.all(
+          basicSpeakers.map(s =>
+            eventifyFetch<Speaker>(`/speakers/${s.speakerid}`).catch(() => null)
+          )
+        );
+
+        const speakers = speakerDetails.filter((s): s is Speaker => s !== null);
 
         const enrichedSpeakers = speakers.map((speaker) => ({
           id: speaker.speakerid,
           name: `${speaker.firstname} ${speaker.lastname}`,
-          bio: speaker.bio,
+          bio: speaker.description || speaker.bio,
+          photo: speaker.profileimage || "",
           company: speaker.company,
-          title: speaker.designation,
-          sessions: [],
+          title: speaker.position || speaker.designation,
         }));
-
-        const _meta = {
-          photos: speakers.map((s) => s.speakerimage || ""),
-        };
 
         const structuredContent = {
           speakers: enrichedSpeakers,
@@ -247,7 +253,6 @@ const server = new McpServer(
 
         return {
           structuredContent,
-          _meta,
           content: [
             {
               type: "text",

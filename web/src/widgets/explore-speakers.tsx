@@ -7,14 +7,13 @@ interface Speaker {
   id: number;
   name: string;
   bio?: string;
+  photo?: string;
   company?: string;
   title?: string;
-  sessions: { id: number; name: string; startTime: string }[];
 }
 
 function ExploreSpeakers() {
-  const { output, isPending, responseMetadata } =
-    useToolInfo<"explore-speakers">();
+  const { output, isPending } = useToolInfo<"explore-speakers">();
   const [selectedSpeaker, setSelectedSpeaker] = useState<Speaker | null>(null);
 
   if (isPending || !output) {
@@ -27,31 +26,21 @@ function ExploreSpeakers() {
   }
 
   const { speakers } = output;
-  const photos = responseMetadata?.photos || [];
-
-  const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString([], {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   // Speaker detail view
   if (selectedSpeaker) {
-    const speakerIndex = speakers.findIndex((s) => s.id === selectedSpeaker.id);
-    const photo = photos[speakerIndex];
-
     return (
       <div className="speaker-detail">
         <button className="back-btn" onClick={() => setSelectedSpeaker(null)}>
           Back to Speakers
         </button>
         <div className="speaker-header">
-          {photo && (
-            <img src={photo} alt={selectedSpeaker.name} className="speaker-photo-large" />
+          {selectedSpeaker.photo ? (
+            <img src={selectedSpeaker.photo} alt={selectedSpeaker.name} className="speaker-photo-large" />
+          ) : (
+            <div className="speaker-photo-placeholder" style={{ width: 120, height: 120, fontSize: '2rem' }}>
+              {selectedSpeaker.name.split(" ").map((n) => n[0]).join("")}
+            </div>
           )}
           <div className="speaker-info">
             <h2>{selectedSpeaker.name}</h2>
@@ -69,21 +58,6 @@ function ExploreSpeakers() {
             <p>{selectedSpeaker.bio}</p>
           </div>
         )}
-        {selectedSpeaker.sessions.length > 0 && (
-          <div className="speaker-sessions">
-            <h4>Sessions</h4>
-            <ul>
-              {selectedSpeaker.sessions.map((session) => (
-                <li key={session.id}>
-                  <span className="session-name">{session.name}</span>
-                  <span className="session-time">
-                    {formatTime(session.startTime)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     );
   }
@@ -94,15 +68,15 @@ function ExploreSpeakers() {
       <p className="speakers-count">{speakers.length} speakers</p>
 
       <div className="speakers-grid">
-        {speakers.map((speaker, index) => (
+        {speakers.map((speaker) => (
           <div
             key={speaker.id}
             className="speaker-card"
             onClick={() => setSelectedSpeaker(speaker)}
           >
-            {photos[index] ? (
+            {speaker.photo ? (
               <img
-                src={photos[index]}
+                src={speaker.photo}
                 alt={speaker.name}
                 className="speaker-photo"
               />
@@ -117,12 +91,6 @@ function ExploreSpeakers() {
             <h3>{speaker.name}</h3>
             {speaker.title && <p className="title">{speaker.title}</p>}
             {speaker.company && <p className="company">{speaker.company}</p>}
-            {speaker.sessions.length > 0 && (
-              <p className="session-count">
-                {speaker.sessions.length} session
-                {speaker.sessions.length > 1 ? "s" : ""}
-              </p>
-            )}
           </div>
         ))}
       </div>
