@@ -550,7 +550,6 @@ button:disabled {
   max-height: 60px;
   object-fit: contain;
   margin-bottom: 0.75rem;
-  filter: brightness(0) invert(1);
 }
 
 .sponsor-logo-placeholder {
@@ -606,7 +605,6 @@ button:disabled {
   max-width: 150px;
   max-height: 80px;
   object-fit: contain;
-  filter: brightness(0) invert(1);
 }
 
 .sponsor-info h2 {
