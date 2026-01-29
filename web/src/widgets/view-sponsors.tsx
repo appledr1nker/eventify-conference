@@ -7,6 +7,7 @@ interface Sponsor {
   id: number;
   name: string;
   description?: string;
+  logo?: string;
   website?: string;
   categoryId: number;
   categoryName?: string;
@@ -14,8 +15,7 @@ interface Sponsor {
 
 
 function ViewSponsors() {
-  const { output, isPending, responseMetadata } =
-    useToolInfo<"view-sponsors">();
+  const { output, isPending } = useToolInfo<"view-sponsors">();
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [selectedSponsor, setSelectedSponsor] = useState<Sponsor | null>(null);
 
@@ -29,7 +29,6 @@ function ViewSponsors() {
   }
 
   const { categories, sponsors } = output;
-  const logos = responseMetadata?.logos || [];
 
   // Filter by selected category
   const filteredSponsors = selectedCategory
@@ -38,17 +37,14 @@ function ViewSponsors() {
 
   // Sponsor detail view
   if (selectedSponsor) {
-    const sponsorIndex = sponsors.findIndex((s) => s.id === selectedSponsor.id);
-    const logo = logos[sponsorIndex];
-
     return (
       <div className="sponsor-detail">
         <button className="back-btn" onClick={() => setSelectedSponsor(null)}>
           Back to Sponsors
         </button>
         <div className="sponsor-header">
-          {logo && (
-            <img src={logo} alt={selectedSponsor.name} className="sponsor-logo-large" />
+          {selectedSponsor.logo && (
+            <img src={selectedSponsor.logo} alt={selectedSponsor.name} className="sponsor-logo-large" />
           )}
           <div className="sponsor-info">
             <h2>{selectedSponsor.name}</h2>
@@ -105,28 +101,23 @@ function ViewSponsors() {
 
       {/* Sponsors grid */}
       <div className="sponsors-grid">
-        {filteredSponsors.map((sponsor) => {
-          const sponsorIndex = sponsors.findIndex((s) => s.id === sponsor.id);
-          const logo = logos[sponsorIndex];
-
-          return (
-            <div
-              key={sponsor.id}
-              className="sponsor-card"
-              onClick={() => setSelectedSponsor(sponsor)}
-            >
-              {logo ? (
-                <img src={logo} alt={sponsor.name} className="sponsor-logo" />
-              ) : (
-                <div className="sponsor-logo-placeholder">{sponsor.name[0]}</div>
-              )}
-              <h3>{sponsor.name}</h3>
-              {sponsor.categoryName && (
-                <span className="category-badge">{sponsor.categoryName}</span>
-              )}
-            </div>
-          );
-        })}
+        {filteredSponsors.map((sponsor) => (
+          <div
+            key={sponsor.id}
+            className="sponsor-card"
+            onClick={() => setSelectedSponsor(sponsor)}
+          >
+            {sponsor.logo ? (
+              <img src={sponsor.logo} alt={sponsor.name} className="sponsor-logo" />
+            ) : (
+              <div className="sponsor-logo-placeholder">{sponsor.name[0]}</div>
+            )}
+            <h3>{sponsor.name}</h3>
+            {sponsor.categoryName && (
+              <span className="category-badge">{sponsor.categoryName}</span>
+            )}
+          </div>
+        ))}
       </div>
 
       {filteredSponsors.length === 0 && (

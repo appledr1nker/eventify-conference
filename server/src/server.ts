@@ -44,8 +44,10 @@ interface Speaker {
   lastname: string;
   email?: string;
   bio?: string;
-  speakerimage?: string;
+  description?: string;
+  profileimage?: string;
   company?: string;
+  position?: string;
   designation?: string;
 }
 
@@ -58,10 +60,26 @@ interface Sponsor {
   sponsorid: number;
   name: string;
   description?: string;
-  sponsorlogo?: string;
+  logoimage?: string;
   website?: string;
   categoryid: number;
   categoryname?: string;
+  sponsorship_title?: {
+    membershiptitle: string;
+    bgcolor: string;
+    textcolor: string;
+  };
+}
+
+interface BasicSponsor {
+  sponsorid: number;
+  name: string;
+  categoryid: number;
+  category_details?: {
+    membershiptitle: string;
+    bgcolor: string;
+    textcolor: string;
+  };
 }
 
 interface GalleryImage {
@@ -109,15 +127,26 @@ const server = new McpServer(
           tracks: Track[];
           sessions: Session[];
           session_speakers: SessionSpeaker[];
-          speakers: Speaker[];
+          speakers: { speakerid: number; firstname: string; lastname: string }[];
         }>("/sessions");
 
         const sessions = data.sessions || [];
         const sessionSpeakers = data.session_speakers || [];
-        const speakers = data.speakers || [];
+        const basicSpeakers = data.speakers || [];
 
-        // Create a map of speakerid to speaker for quick lookup
-        const speakerMap = new Map(speakers.map(s => [s.speakerid, s]));
+        // Fetch full speaker details (with photos) for all speakers
+        const speakerDetails = await Promise.all(
+          basicSpeakers.map(s =>
+            eventifyFetch<Speaker>(`/speakers/${s.speakerid}`).catch(() => null)
+          )
+        );
+
+        // Create a map of speakerid to full speaker details
+        const speakerMap = new Map(
+          speakerDetails
+            .filter((s): s is Speaker => s !== null)
+            .map(s => [s.speakerid, s])
+        );
 
         // Map sessions to output format with speakers
         const enrichedSessions = sessions.map((session) => {
@@ -132,7 +161,7 @@ const server = new McpServer(
             .map(s => ({
               id: s.speakerid,
               name: `${s.firstname} ${s.lastname}`,
-              photo: s.speakerimage || "",
+              photo: s.profileimage || "",
             }));
 
           return {
@@ -254,25 +283,36 @@ const server = new McpServer(
     },
     async () => {
       try {
-        const data = await eventifyFetch<{
-          resource: Sponsor[];
-        }>("/sponsors");
+        // Get basic sponsor list from sessions endpoint
+        const sessionsData = await eventifyFetch<{
+          sponsors: BasicSponsor[];
+        }>("/sessions");
 
-        const sponsors = data.resource || [];
+        const basicSponsors = sessionsData.sponsors || [];
+
+        // Fetch full sponsor details (with logos) for all sponsors
+        const sponsorDetails = await Promise.all(
+          basicSponsors.map(s =>
+            eventifyFetch<Sponsor>(`/sponsors/${s.sponsorid}`).catch(() => null)
+          )
+        );
+
+        const sponsors = sponsorDetails.filter((s): s is Sponsor => s !== null);
 
         // Group by category
         const categories = [
           ...new Map(
             sponsors.map((s) => [
               s.categoryid,
-              { id: s.categoryid, name: s.categoryname || "General" },
+              {
+                id: s.categoryid,
+                name: s.sponsorship_title?.membershiptitle || "General",
+                bgcolor: s.sponsorship_title?.bgcolor,
+                textcolor: s.sponsorship_title?.textcolor,
+              },
             ])
           ).values(),
         ];
-
-        const _meta = {
-          logos: sponsors.map((s) => s.sponsorlogo || ""),
-        };
 
         const structuredContent = {
           categories,
@@ -280,15 +320,15 @@ const server = new McpServer(
             id: s.sponsorid,
             name: s.name,
             description: s.description,
+            logo: s.logoimage || "",
             website: s.website,
             categoryId: s.categoryid,
-            categoryName: s.categoryname,
+            categoryName: s.sponsorship_title?.membershiptitle,
           })),
         };
 
         return {
           structuredContent,
-          _meta,
           content: [
             {
               type: "text",
